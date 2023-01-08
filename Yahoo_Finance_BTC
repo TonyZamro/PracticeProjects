@@ -1,0 +1,57 @@
+from ast import Index
+from pickle import TRUE
+from bs4 import BeautifulSoup as sp
+import requests
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import lxml
+import re
+import datetime as dt
+#------------------------------------------------------------------------------------------------------
+#store link in variable and request the link via get function
+url = 'https://finance.yahoo.com/quote/BTC-USD/history?p=BTC-USD'
+link_request = requests.get(url, headers = {'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.64 Safari/537.36'})
+#print(link_request.status_code)
+#Now get the content from the site
+
+source = link_request.content
+dates = []
+closing_values = []
+diff_values = []
+#Create a soup object with the content and parse through it 
+soup = sp(source,'html.parser')
+#------------------------------------------------------------------------------------------------------
+#Iterate through the table and find the closing data for BTC
+table_data = soup.find('tbody')
+for row in table_data.find_all('tr'):
+    columns = row.find_all('td')
+    date = columns[0].span.text
+    closing = columns[4].span.text
+    print(closing) 
+    dates.append(date)
+    closing_values.append(closing)
+for value in closing_values:
+    modded_values = value.replace(',','')
+    diff_values.append(modded_values)
+#------------------------------------------------------------------------------------------------------
+btc_df = pd.DataFrame({'Dates':dates, 'Closing Values':diff_values})
+btc_df["Dates"] = pd.to_datetime(btc_df["Dates"].str.replace(r"(\d+)([A-Z].*)", r"\1", regex=True))
+btc_df["Dates"] = btc_df["Dates"].dt.to_period('M')
+btc_df = btc_df.sort_values(by="Dates",ascending=True)
+btc_df.to_csv('btc.csv')
+print(btc_df.info)
+btc_df2 = pd.read_csv('btc.csv')
+#------------------------------------------------------------------------------------------------------
+v_line = sns.lineplot(x='Dates', y='Closing Values', data=btc_df2)
+fig = v_line.figure
+fig.savefig('btc.png')
+#end 
+
+
+
+
+
+        
+
+
